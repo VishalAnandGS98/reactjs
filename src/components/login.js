@@ -8,10 +8,11 @@ import {
   Box,
   FormControlLabel,
   Checkbox,
-  Link
+  Link,
+  CircularProgress,
+  Backdrop
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import background from '../asset/backgrund3.jpg'
 
 
 
@@ -22,7 +23,17 @@ export default function LoginPage()
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({ email: false, password: false });
+  const [submitErr,setSubmitErr] = useState("");
+
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+  const handleOpen = () => {
+    setOpen(true);
+  };
 
 
   const handleSubmit = () => {
@@ -31,10 +42,43 @@ export default function LoginPage()
       password: password.trim() === "",
     };
     setErrors(newErrors);
+    handleOpen();
 
     if (!newErrors.email && !newErrors.password) {
-
-      navigate("/eismain");
+      
+      fetch('http://localhost:8080/eisportal/api/v1/login',{
+        method:"POST",
+        body:JSON.stringify({
+            "userName": email,
+            "password": password
+        }),
+        headers:{
+          'Content-type':'application/json; charset=UTF-8'
+        }
+      })
+      .then(response => response.json())
+      .then(resp => {
+        handleClose();
+        
+          if(resp != null && resp.responseCode === '0')
+          {
+            console.log("Success - "+JSON.stringify(resp?.loginDtls[0]?.uniqueId));
+            
+            navigate("/eismain",{ state: {message : JSON.stringify(resp?.loginDtls[0]?.uniqueId)}});
+          }
+          else if(resp != null && resp.responseCode === '1')
+          {
+            console.log("Failure - "+JSON.stringify(resp));
+            setSubmitErr(resp.responseMessage);
+          }
+          else
+          {
+            console.log("Error Occured - "+JSON.stringify(resp));
+            setSubmitErr("Error Occured");
+          }
+          
+      })
+      .catch(err => console.log(err));
     }
   };
    
@@ -47,7 +91,6 @@ export default function LoginPage()
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        // backgroundImage:  `url(${background})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}>
@@ -115,9 +158,17 @@ export default function LoginPage()
           >
             Sign In
           </Button>
+          <Typography>{submitErr}</Typography>
         </CardContent>
       </Card>
       </Box>
+      <Backdrop
+        sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
+        open={open}
+        onClick={handleClose}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
         </>
     )
 }
